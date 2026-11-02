@@ -74,7 +74,7 @@ a.btn{text-decoration:none;text-align:center}
 #auth .msg.err{display:block;background:color-mix(in srgb,var(--bad) 12%,var(--card));color:var(--bad)}
 #auth .msg.ok{display:block;background:color-mix(in srgb,var(--ok) 12%,var(--card));color:var(--ok)}
 #auth .link{border:0;background:none;color:var(--acc);padding:0;font-size:13px}
-@media (max-width:620px){</style>
+@media (max-width:620px){input,select,textarea{font-size:16px!important}button,[role=button]{min-height:40px;min-width:40px}button{touch-action:manipulation}\n</style>
 </head>
 <body class="locked">
 <div id="auth"><div class="box">
@@ -96,7 +96,7 @@ a.btn{text-decoration:none;text-align:center}
 <nav id="nav"></nav>
 <div id="toast"></div>
 <script>
-const D=864e5,now=new Date();now.setHours(0,0,0,0);
+const D=864e5;let now=new Date();now.setHours(0,0,0,0);const localDateValue=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`};
 const day=n=>new Date(+now+n*D),diff=d=>Math.round((+d-+now)/D);
 const fmt=d=>d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -108,13 +108,20 @@ exam:new Date(2027,4,23),editExam:false,
 tasks:[],log:[],ch:[],mist:[],led:[],
 ts:'current',sync:null,ms:'All',lq:'',goal:90,ss:'Physics',sx:'Advanced',op:{},syl:[],lec:[],mat:[],
 topics:[],back:[],vault:[],
-T:{left:1500,len:25,run:false,s:'Physics'}};
-const KEYS=['tasks','log','ch','mist','led','vault','topics','back','sync','mat','lec','goal','syl','sylv','sx','exam','clean','theme','acc','calm'];
-try{const sv=JSON.parse(localStorage.getItem('spine-jee')||'null');if(sv&&sv.topics){const sh=Math.round((+now-sv.saved)/D)||0;(sv.log||[]).forEach(l=>l.d-=sh);(sv.led||[]).forEach(l=>l.due-=sh);(sv.back||[]).forEach(b=>b.due-=sh);if(sv.exam)sv.exam=new Date(sv.exam);else delete sv.exam;delete sv.saved;Object.assign(S,sv)}}catch(e){}
+T:{left:1500,len:25,run:false,s:'Physics',endAt:null,elapsed:0}};
+const KEYS=['tasks','log','ch','mist','led','vault','topics','back','sync','mat','lec','goal','syl','sylv','sx','exam','clean','theme','acc','calm','T'];
+const DEFAULT_STATE=JSON.parse(JSON.stringify(S));
+try{const sv=JSON.parse(localStorage.getItem('spine-jee')||'null');if(sv&&sv.topics){if(Number.isFinite(+sv.uid))uid=Math.max(uid,+sv.uid);const sh=Math.round((+now-sv.saved)/D)||0;(sv.log||[]).forEach(l=>l.d-=sh);(sv.led||[]).forEach(l=>l.due-=sh);(sv.back||[]).forEach(b=>b.due-=sh);if(sv.exam)sv.exam=new Date(sv.exam);else delete sv.exam;delete sv.saved;Object.assign(S,sv)}}catch(e){}
 const DEMO={"tasks":["t",["Rotational Motion: 25 PYQs","Revise GOC reaction mechanisms","Integration: definite integral properties","Fix mistakes from AITS-3","Formula sheet: Thermodynamics"]],"log":["txt",["Rotational motion PYQs","Woke 7:30, focus feels high","Organic GOC mechanisms","Limits and continuity sheet","AITS-3 · 142/360","Electrostatics theory","Integration practice set","Mole concept numericals","Laws of motion, friction","Slept late, low energy in class","Complex numbers","Chemical bonding","Kinematics graphs","Revise Hess law tomorrow"]],"mist":["q",["Rolling without slipping: used wrong friction direction","Definite integral: sign error after substitution","Marked wrong option for most stable carbocation","Spent 9 minutes on a 3-mark capacitor question"]],"led":["t",["JEE Advanced registration window opens","Full-length mock test (AITS)","Revise organic named reactions","Download admit card","Mobile data recharge","Library membership renewal"]],"vault":["t",["JEE Main scorecard","Admit card (Advanced)","Student ID, coaching","Emergency info"]],"topics":["n",["Rotational Motion","Electrostatics","Chemical Equilibrium","Organic: Isomerism","Definite Integration","Equilibrium","Some Basic Principles of Organic Chemistry","Integral Calculus"]],"back":["n",["Current Electricity","Thermodynamics numericals","Probability","Magnetism"]],"lec":["n",["Lecture 3: Torque and angular momentum","Lecture 4: Rolling motion","Lecture 5: Moment of inertia problems","Lecture 1: Coulomb’s law and electric field","Lecture 2: Gauss’s law","Lecture 2: Le Chatelier and Kc","Lecture 3: Properties and King’s rule","Lecture 1: Drift velocity and resistance"]],"mat":["t",["Physics chapter notes and PYQs","Rotational Motion module","Chemical Equilibrium revision notes"]]};
 if(!S.clean){Object.entries(DEMO).forEach(([k,[f,v]])=>{if(Array.isArray(S[k]))S[k]=S[k].filter(x=>!v.includes(x[f]))});S.clean=1}
-const save=()=>{try{const o=Object.fromEntries(KEYS.map(k=>[k,S[k]]));o.saved=+now;localStorage.setItem('spine-jee',JSON.stringify(o))}catch(e){}};
+const save=()=>{try{
+const o=Object.fromEntries(KEYS.map(k=>[k,S[k]]));o.saved=+now;o.uid=uid;
+const auth=window.SpineAuth, userId=auth?.user?.id;
+localStorage.setItem(userId?'spine-jee-user-'+userId:'spine-jee',JSON.stringify(o));
+if(userId&&auth?._queueSave)auth._queueSave(o);
+}catch(e){console.error('Spine save failed',e);if(document.getElementById('toast'))toast('Could not save: device storage may be full')}};
 try{const raw=JSON.parse(localStorage.getItem('spine-jee')||'null');if(!raw||!raw.syl)S.syl.forEach(syncChapter)}catch(e){}
+uid=Math.max(uid,...['tasks','log','ch','mist','led','vault','topics','back','mat','lec','syl'].flatMap(k=>(S[k]||[]).map(x=>+x.id||0)),0);
 const minsToday=()=>S.log.filter(l=>l.d===0&&l.k==='study').reduce((a,l)=>a+l.min,0);
 const heatH=i=>S.log.filter(l=>l.d===-i&&l.k==='study').reduce((a,l)=>a+l.min,0)/60;
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.x);toast.x=setTimeout(()=>t.classList.remove('on'),1800)}
@@ -141,7 +148,7 @@ week=S.led.filter(l=>l.due<=7).length,bl=S.back.length,tl=S.calm?open.slice(0,3)
 th=minsToday();
 return `<div class="c"><div class="row"><div><div class="big">${dl}</div><div class="mut">days to target exam</div></div><div class="sp"></div>
 <div style="text-align:right"><div class="mut">${fmt(S.exam)} ${S.exam.getFullYear()}</div><button data-a="editExam" class="chip">${S.editExam?'Close':'Edit date'}</button></div></div>
-${S.editExam?`<form data-f="exam" style="margin:10px 0 0"><input type="date" name="d" value="${S.exam.toISOString().slice(0,10)}"><button class="pri">Save</button></form>`:''}</div>
+${S.editExam?`<form data-f="exam" style="margin:10px 0 0"><input type="date" name="d" value="${localDateValue(S.exam)}"><button class="pri">Save</button></form>`:''}</div>
 <h2>Today’s brief</h2><div class="c">You have <b>${open.length}</b> open task${open.length===1?'':'s'}, <b>${week}</b> ledger item${week===1?'':'s'} due this week and <b>${bl}</b> backlog${bl===1?'':'s'} still to clear. In class right now: <b>${S.topics.filter(t=>t.st!=='Done').slice(0,2).map(t=>esc(t.n)).join(', ')||'nothing added yet'}</b>. ${weak?`Weakest chapter right now: <b>${esc(weak.n)}</b> (${weak.p}%).`:''} You’ve logged <b>${Math.floor(th/60)}h ${th%60}m</b> of study today. Classes run 12:00–4:30 PM, so keep the evening for PYQs and the late hours for deep work.</div>
 <h2>Daily rhythm</h2>${blocks.map((b,i)=>`<div class="blk ${i===bi?'now':''}"><b>${b[0]}</b> <span class="mut">· ${b[1]}</span>${i===bi?' <span class="tag">now</span>':''}</div>`).join('')}
 <h2>Recorded lectures</h2>${lecCard()}<h2>Focus timer</h2><div class="c"><div class="timer" id="tm">${tm()}</div>
@@ -258,9 +265,9 @@ return top+`<div class="c"><b>Clearing plan</b><div class="mut">Clear one backlo
 <form data-f="back"><select name="s">${opts(SUBJ)}</select><input type="text" name="n" placeholder="Backlog topic" required><select name="pri">${opts(['High','Medium','Low'])}</select><select name="why">${opts(['Missed class','Not understood','No practice'])}</select><input type="number" name="due" min="1" value="7" style="width:70px" title="Days to clear"><button class="pri">Add</button></form>`+(bk.map(b=>`<div class="c"><div class="row" style="flex-wrap:wrap"><span class="tag">${b.s}</span><div class="sp"><b>${esc(b.n)}</b><div class="mut">${b.why} · clear by ${fmt(day(b.due))}</div></div><button class="chip ${b.pri==='High'?'warn':''}" data-a="bpri" data-id="${b.id}">${b.pri}</button><button class="chip" data-a="tlec" data-v="${esc(b.n)}">Lectures ${lc(b.n)}</button><button class="chip" data-a="tmat" data-v="${b.s}">Material</button><button class="chip" data-a="bclear" data-id="${b.id}">Cleared</button></div></div>`).join('')||'<div class="mut">No backlogs. Keep it that way.</div>')}
 
 function vault(){
-if(!S.unlocked)return `<div class="c" style="text-align:center;padding:28px"><div style="font-size:40px">🔒</div><h1 style="margin:8px 0">Vault locked</h1><div class="mut" style="margin-bottom:14px">Enter your PIN. Demo PIN: 2027</div>
+if(!S.unlocked)return `<div class="c" style="text-align:center;padding:28px"><div style="font-size:40px">🔒</div><h1 style="margin:8px 0">Vault locked</h1><div class="mut" style="margin-bottom:14px">Set a new local PIN (first use) or enter your PIN</div>
 <form data-f="pin" style="justify-content:center"><input type="password" name="p" inputmode="numeric" maxlength="6" placeholder="••••" style="width:110px;text-align:center" autocomplete="off"><button class="pri">Unlock</button></form>${S.bad?'<div class="bad">Wrong PIN, try again.</div>':''}</div>`;
-return `<div class="top"><div class="mut">Stored only on this device.</div><button data-a="lock">Lock</button></div><div style="height:10px"></div>
+return `<div class="top"><div class="mut">Your private study vault.</div><button data-a="lock">Lock</button></div><div style="height:10px"></div>
 <form data-f="vault"><input type="text" name="t" placeholder="Title" required><input type="text" name="d" placeholder="Details" required><button class="pri">Save</button></form>
 ${S.vault.map(v=>`<div class="c row"><div class="sp"><b>${esc(v.t)}</b><div class="mut">${esc(v.d)}</div></div><button class="chip" data-a="vdel" data-id="${v.id}">×</button></div>`).join('')}`}
 
@@ -288,10 +295,10 @@ else if(ps==='settings')body=`<div class="c pf"><b>Appearance</b>
 <div class="c pf"><b>Study</b>
 <div class="row"><span class="sp">Daily lecture goal</span><div class="row">${[60,90,120,180].map(g=>`<button class="chip ${S.goal===g?'on':''}" data-a="setGoal" data-v="${g}">${g}m</button>`).join('')}</div></div>
 <div class="row"><span class="sp">Calm mode<div class="mut">Show only your top 3 tasks on Today</div></span><button class="chip ${S.calm?'on':''}" data-a="calm">${S.calm?'On':'Off'}</button></div>
-<form class="row" data-f="exam"><span class="sp">Exam date</span><input type="date" name="d" value="${S.exam.toISOString().slice(0,10)}"><button>Save</button></form></div>
+<form class="row" data-f="exam"><span class="sp">Exam date</span><input type="date" name="d" value="${localDateValue(S.exam)}"><button>Save</button></form></div>
 <form class="c pf" data-f="pw"><b>Password</b><input name="pw" type="password" minlength="6" autocomplete="new-password" placeholder="New password (6+ characters)" required><button>Change password</button></form>
-<div class="c pf"><b>Your data</b><div class="mut">Dashboard data is stored on this device.</div>
-<div class="row"><button class="sp" data-a="export">Download backup</button><button class="sp" data-a="wipe" style="color:var(--bad)">Reset dashboard</button></div></div>`;
+<div class="c pf"><b>Your data</b><div class="mut">Your study data is saved to your account database and cached on this device. You can export a backup anytime.</div>
+<div class="row"><button class="sp" data-a="export">Download backup</button><label class="sp">Restore backup<input type="file" id="restore-backup" accept="application/json,.json" style="display:block"></label><button class="sp" data-a="wipe" style="color:var(--bad)">Reset dashboard</button></div></div>`;
 else{const code=refCode(u),link=location.origin+'/?ref='+code,txt='I plan my JEE prep on Spine. Join me: '+link;
 body=`<div class="c pf" style="text-align:center"><div style="font-size:34px">🎁</div><b>Study better together</b>
 <div class="mut">Invite friends preparing for JEE. They sign up with your link and you keep each other on track.</div>
@@ -334,7 +341,7 @@ else if(a==='sx')S.sx=v;
 else if(a==='sopen')S.op[id]=!S.op[id];
 else if(a==='stick'){const c=S.syl.find(x=>x.id===+v),x=c.subs.find(y=>y.id===id);x.done=!x.done;syncChapter(c)}
 else if(a==='sdels'){const c=S.syl.find(x=>x.id===+v);c.subs=c.subs.filter(y=>y.id!==id);syncChapter(c)}
-else if(a==='sdelc')S.syl=S.syl.filter(x=>x.id!==id);
+else if(a==='sdelc'){const c=S.syl.find(x=>x.id===id);if(c&&confirm(`Delete ${c.n} and its syllabus subtopics? Linked Prep and Topics entries will also be removed.`)){S.syl=S.syl.filter(x=>x.id!==id);S.ch=S.ch.filter(x=>!(x.s===c.s&&x.n.toLowerCase()===c.n.toLowerCase()));S.topics=S.topics.filter(x=>!(x.s===c.s&&x.n.toLowerCase()===c.n.toLowerCase()));}}
 else if(a==='saddt'){const c=S.syl.find(x=>x.id===id);S.topics.unshift({id:++uid,s:c.s,n:c.n,st:'Learning',src:'Syllabus'});syncChapter(c);toast('Added to current topics')}
 else if(a==='tsyl'){const c=S.syl.find(x=>x.id===id);S.tab='syl';S.ss=c.s;S.op[c.id]=true;window.scrollTo(0,0)}
 else if(a==='lw'){const l=S.lec.find(x=>x.id===id);setLec(l,v==='done'?100:l.w+ +v);toast(l.w>=100?'Lecture finished and logged':'Progress logged to timeline')}
@@ -355,19 +362,20 @@ else if(a==='setTheme')S.theme=v;
 else if(a==='setGoal')S.goal=+v;
 else if(a==='refcopy'){navigator.clipboard?.writeText(v).then(()=>toast('Link copied'),()=>toast('Copy failed'));return}
 else if(a==='refshare'){if(navigator.share)navigator.share({title:'Spine',text:v}).catch(()=>{});else navigator.clipboard?.writeText(v).then(()=>toast('Invite copied'));return}
-else if(a==='export'){const u=URL.createObjectURL(new Blob([localStorage.getItem('spine-jee')||'{}'],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download='spine-backup.json';l.click();URL.revokeObjectURL(u);return}
+else if(a==='export'){const u=URL.createObjectURL(new Blob([localStorage.getItem('spine-jee')||'{}'],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download='spine-backup.json';l.click();setTimeout(()=>URL.revokeObjectURL(u),1500);return}
 else if(a==='wipe'){if(confirm('Erase all tasks, logs, syllabus progress and notes on this device? This cannot be undone.')){localStorage.removeItem('spine-jee');location.reload()}return}
 else if(a==='logout'){if(confirm('Log out of Spine?'))window.SpineAuth?.logout();return}
 else if(a==='vdel')S.vault=S.vault.filter(x=>x.id!==id);
 render()});
 document.addEventListener('change',e=>{if(e.target.dataset.a==='tsub'){S.T.s=e.target.value}});
+document.addEventListener('change',async e=>{if(e.target.id!=='restore-backup'||!e.target.files?.[0])return;try{const data=JSON.parse(await e.target.files[0].text());if(!data||typeof data!=='object'||!Array.isArray(data.tasks)||!Array.isArray(data.log))throw new Error('This does not look like a Spine backup.');if(!confirm('Restore this backup? Current data on this device will be replaced.'))return;localStorage.setItem('spine-jee',JSON.stringify(data));location.reload()}catch(err){toast(err.message||'Could not restore backup')}finally{e.target.value=''}});
 document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,k=f.dataset.f,d=Object.fromEntries(new FormData(f));
 if(k==='task')S.tasks.unshift({id:++uid,t:d.t,s:d.s,done:false});
 else if(k==='exam'&&d.d){const p=d.d.split('-');S.exam=new Date(+p[0],+p[1]-1,+p[2]);S.editExam=false}
 else if(k==='mist'){S.mist.unshift({id:++uid,s:d.s,c:d.c,q:d.q,f:d.f,rev:false});toast('Saved to notebook')}
 else if(k==='log'){const tm=new Date().toTimeString().slice(0,5);S.log.push(d.k==='study'?{id:++uid,d:0,time:tm,k:'study',s:d.s,min:+d.min||30,txt:d.txt}:{id:++uid,d:0,time:tm,k:d.k,txt:d.txt});toast('Added to timeline')}
 else if(k==='led'){const p=parse(d.t);S.led.push({id:++uid,t:p.t,ty:p.ty,due:p.due,rep:p.rep});toast('Added: '+p.t+' · '+fmt(day(p.due)))}
-else if(k==='sylimp'){const r=importSyl(d.txt);toast(r?'Imported '+r+' subtopic'+(r===1?'':'s'):'Nothing recognised. Put each chapter on its own line, subtopics indented below it.')}
+else if(k==='sylimp'){const r=importSyl(d.txt,S.sx==='Advanced'?'A':S.sx==='Main'?'M':'MA');toast(r?'Imported '+r+' subtopic'+(r===1?'':'s'):'Nothing recognised. Put each chapter on its own line, subtopics indented below it.')}
 else if(k==='sub'){const c=S.syl.find(x=>x.id===+d.c);if(c&&addSub(c,d.n)){c.subs.forEach(x=>delete x.f);syncChapter(c)}}
 else if(k==='lec'){S.lec.push({id:++uid,s:d.s,ch:d.ch.trim(),n:d.n.trim(),min:+d.min||50,w:0,u:safeUrl(d.u)});toast('Lecture added')}
 else if(k==='lecimp'){const r=importLec(d.txt);toast(r?'Imported '+r+' lecture'+(r===1?'':'s'):'Nothing recognised. Use “Physics: Chapter - Lecture 4 (52 min)” per line.')}
@@ -375,14 +383,15 @@ else if(k==='mat'){S.mat.unshift({id:++uid,s:d.s,t:d.t,n:d.n,u:(d.u||'').trim()}
 else if(k==='topic')S.topics.unshift({id:++uid,s:d.s,n:d.n,st:'Learning',src:'Manual'});
 else if(k==='back'){S.back.unshift({id:++uid,s:d.s,n:d.n,pri:d.pri,why:d.why,due:+d.due||7});toast('Backlog added')}
 else if(k==='allen'){const r=importAllen(d.txt,!!d.mirror);toast(r.n||r.u||r.r?`Sync: ${r.n} added, ${r.u} updated, ${r.r} removed`:'Nothing changed. Use “Physics: Topic [Done]” per line.')}
-else if(k==='pin'){if(d.p==='2027'){S.unlocked=true;S.bad=false}else S.bad=true}
+else if(k==='pin'){if(!localStorage.getItem('spine-vault-pin')){if(/^\\d{4,8}$/.test(d.p)){localStorage.setItem('spine-vault-pin',d.p);S.unlocked=true;S.bad=false}else S.bad=true}else if(d.p===localStorage.getItem('spine-vault-pin')){S.unlocked=true;S.bad=false}else S.bad=true}
 else if(k==='profile'){const A=window.SpineAuth;if(A)A.save(d).then(()=>{toast('Details saved');render()},err=>toast(err.message||'Could not save'));}
 else if(k==='pw'){window.SpineAuth?.password(d.pw).then(()=>{f.reset();toast('Password changed')},err=>toast(err.message||'Could not change password'))}
 else if(k==='vault')S.vault.push({id:++uid,t:d.t,d:d.d});
 render()});
-setInterval(()=>{if(!S.T.run)return;S.T.left--;
-if(S.T.left<=0){S.T.run=false;S.log.push({id:++uid,d:0,time:new Date().toTimeString().slice(0,5),k:'study',s:S.T.s,min:S.T.len,txt:'Focus session'});S.T.left=S.T.len*60;toast('Session logged: '+S.T.len+' min of '+S.T.s);render();return}
-const el=document.getElementById('tm');if(el)el.textContent=tm()},1000);
+function logFocus(min){if(min>0){S.log.push({id:++uid,d:diff(new Date()),time:new Date().toTimeString().slice(0,5),k:'study',s:S.T.s,min,txt:'Focus session'});toast('Logged '+min+' min of '+S.T.s)}}
+setInterval(()=>{if(!S.T.run)return;S.T.left=Math.max(0,Math.ceil((S.T.endAt-Date.now())/1000));S.T.elapsed=S.T.len*60-S.T.left;
+if(S.T.left<=0){S.T.run=false;S.T.endAt=null;logFocus(S.T.len);S.T.left=S.T.len*60;S.T.elapsed=0;render();return}
+const el=document.getElementById('tm');if(el)el.textContent=tm()},500);
 const SYL0=`Maths
 Sets Relations and Functions: Sets and representation, Union intersection and complement, Power set, Relations and types, Equivalence relations, One-one into and onto functions, Composition of functions
 Complex Numbers and Quadratic Equations: Complex numbers as ordered pairs, Argand diagram, Algebra of complex numbers, Modulus and argument, Quadratic equations, Relations between roots and coefficients, Nature of roots, Forming equations with given roots
@@ -519,69 +528,249 @@ Biomolecules: Carbohydrates and anomers, Peptides and proteins, DNA and RNA stru
 Polymers: Types of polymerization, Natural rubber and cellulose, Nylon Teflon Bakelite PVC, Biodegradable polymers
 Chemistry in Everyday Life: Drug-target interaction, Therapeutic drug classes, Artificial sweeteners, Soaps and detergents
 Practical Organic Chemistry: Detection of N S and halogens, Functional group identification`;
-if(S.sylv!==2){try{migrateSyl()}catch(e){console.error(e)}S.sylv=2}
-if(S.sylv!==3){try{importSyl(ADV0,'A')}catch(e){console.error(e)}S.sylv=3}
+if(S.sylv!==2){try{migrateSyl();S.sylv=2}catch(e){console.error('Syllabus migration failed; version left unchanged',e)}}
+if(S.sylv!==3){try{importSyl(ADV0,'A');S.sylv=3}catch(e){console.error('Advanced syllabus import failed; version left unchanged',e)}}
 render();
 </script>
 <script type="module">
-import {getUser,login,signup,logout,requestPasswordRecovery,updateUser,handleAuthCallback,onAuthChange,getSettings,AuthError,MissingIdentityError} from 'https://esm.sh/@netlify/identity@2';
-const $=id=>document.getElementById(id),form=$('auth-form'),F=form.elements,msg=$('auth-msg'),go=$('auth-go');
-const LABEL={login:'Sign in',signup:'Create account',forgot:'Send reset link',reset:'Set new password'};
-let mode='login';
-function say(t,ok){msg.textContent=t||'';msg.className='msg'+(t?ok?' ok':' err':'')}
-function setMode(m){mode=m;say('');
-  $('f-name').hidden=m!=='signup';$('f-email').hidden=m==='reset';$('f-pass').hidden=m==='forgot';
-  F.password.autocomplete=m==='login'?'current-password':'new-password';
-  F.password.parentNode.firstChild.textContent=m==='reset'?'New password':'Password';
-  go.textContent=LABEL[m];
-  document.querySelectorAll('#auth-seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  $('auth-seg').hidden=m==='reset';$('auth-forgot').hidden=m!=='login';
-  $('auth-switch').textContent=m==='signup'?'Already have an account? Sign in':m==='login'?'New here? Create an account':'Back to sign in'}
-function show(user){
-  document.body.classList.toggle('locked',!user);document.body.classList.toggle('authed',!!user);
-  window.SpineAuth.user=user;if(user&&S.tab==='profile')render()}
-window.SpineAuth={user:null,
-  save:async data=>{const u=await updateUser({data});window.SpineAuth.user=u;return u},
-  password:password=>updateUser({password}),
-  logout:async()=>{try{await logout()}catch(e){}show(null);setMode('login')}};
-const ref=new URLSearchParams(location.search).get('ref');
-if(ref){sessionStorage.setItem('spine-ref',ref.slice(0,16));history.replaceState(null,'',location.pathname+location.hash)}
-function explain(e){
-  if(e instanceof MissingIdentityError)return 'Accounts are not available right now. Please try again later.';
-  if(e instanceof AuthError){
-    if(e.status===401)return /confirm/i.test(e.message)?'Please confirm your email first — check your inbox.':'Invalid email or password.';
-    if(e.status===403)return 'New sign-ups are currently closed.';
-    if(e.status===422)return /registered|exists/i.test(e.message)?'An account with this email already exists. Try signing in.':e.message;
-    return e.message}
-  return 'Something went wrong. Please try again.'}
-$('auth-seg').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b)setMode(b.dataset.m)});
-$('auth-switch').onclick=()=>setMode(mode==='login'?'signup':'login');
-$('auth-forgot').onclick=()=>setMode('forgot');
-form.addEventListener('submit',async e=>{e.preventDefault();
-  const name=F.name.value.trim(),email=F.email.value.trim(),pw=F.password.value;
-  if(mode!=='reset'&&!/^\S+@\S+\.\S+$/.test(email))return say('Enter a valid email address.');
-  if(mode!=='forgot'&&pw.length<6)return say('Password must be at least 6 characters.');
-  if(mode==='signup'&&!name)return say('Enter your name.');
-  go.disabled=true;say('');
-  try{
-    if(mode==='login'){show(await login(email,pw))}
-    else if(mode==='signup'){const u=await signup(email,pw,Object.assign({full_name:name},sessionStorage.getItem('spine-ref')?{referred_by:sessionStorage.getItem('spine-ref')}:{}));
-      if(u.emailVerified)show(u);else{setMode('login');F.email.value=email;say('Almost there! We sent a confirmation link to '+email+'. Open it to activate your account.',1)}}
-    else if(mode==='forgot'){await requestPasswordRecovery(email);setMode('login');say('If an account exists for '+email+', a reset link is on its way.',1)}
-    else{await updateUser({password:pw});setMode('login');show(await getUser())}
-    F.password.value=''}
-  catch(err){say(explain(err))}
-  finally{go.disabled=false}});
-onAuthChange((ev,user)=>{if(mode!=='reset')show(user)});
-setMode(sessionStorage.getItem('spine-ref')?'signup':'login');
-document.querySelector('#auth .box > .mut:last-child').remove();
-try{
-  const r=await handleAuthCallback();
-  if(r?.type==='recovery'){show(null);setMode('reset');say('Choose a new password for your account.',1)}
-  else if(r?.type==='confirmation'){show(r.user);}
-  else show(await getUser());
-}catch(err){show(await getUser());say(explain(err))}
-getSettings().then(s=>{if(s.disableSignup){document.querySelector('[data-m="signup"]').remove();if(mode==='login')$('auth-switch').hidden=true}}).catch(()=>{});
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const $ = id => document.getElementById(id);
+const form = $('auth-form'), F = form.elements, msg = $('auth-msg'), go = $('auth-go');
+const loadingNote = document.querySelector('#auth .box > .mut:last-child'); if (loadingNote) loadingNote.remove();
+const LABEL = {login:'Sign in', signup:'Create account', forgot:'Send reset link', reset:'Set new password'};
+let mode = 'login', supabase = null, activeUserId = null, cloudReady = false, syncTimer = null, activationUserId = null, activationPromise = null;
+
+function say(t, ok=false) {
+  msg.textContent = t || '';
+  msg.className = 'msg' + (t ? (ok ? ' ok' : ' err') : '');
+}
+function setMode(m) {
+  mode = m; say('');
+  $('f-name').hidden = m !== 'signup';
+  $('f-email').hidden = m === 'reset';
+  $('f-pass').hidden = m === 'forgot';
+  F.password.autocomplete = m === 'login' ? 'current-password' : 'new-password';
+  F.password.parentNode.firstChild.textContent = m === 'reset' ? 'New password' : 'Password';
+  go.textContent = LABEL[m];
+  document.querySelectorAll('#auth-seg button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('auth-seg').hidden = m === 'reset';
+  $('auth-forgot').hidden = m !== 'login';
+  $('auth-switch').hidden = m === 'forgot' || m === 'reset';
+  $('auth-switch').textContent = m === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account';
+}
+function normaliseUser(user) {
+  if (!user) return null;
+  const meta = user.user_metadata || user.userMetadata || {};
+  return { ...user, userMetadata: meta, name: meta.full_name || user.name || '', createdAt: user.created_at || user.createdAt || null };
+}
+function show(user) {
+  const displayUser = normaliseUser(user);
+  document.body.classList.toggle('locked', !displayUser);
+  document.body.classList.toggle('authed', !!displayUser);
+  window.SpineAuth.user = displayUser;
+  if (displayUser && S.tab === 'profile') render();
+}
+function resetToDefaults() {
+  Object.assign(S, JSON.parse(JSON.stringify(DEFAULT_STATE)));
+  if (S.exam) S.exam = new Date(S.exam);
+  uid = 100;
+}
+function restoreData(data) {
+  if (!data || typeof data !== 'object') return;
+  Object.assign(S, data);
+  if (S.exam) S.exam = new Date(S.exam);
+  const groups = ['tasks','log','ch','mist','led','vault','topics','back','mat','lec','syl'];
+  uid = Math.max(uid, Number(data.uid) || 100, ...groups.flatMap(k => (S[k] || []).map(x => +x.id || 0)), 0);
+}
+async function loadCloudData(user) {
+  const { data, error } = await supabase.from('spine_user_data')
+    .select('data').eq('user_id', user.id).maybeSingle();
+  if (error) throw error;
+
+  if (data?.data) {
+    restoreData(data.data);
+  } else {
+    const personalKey = 'spine-jee-user-' + user.id;
+    let local = null;
+    try { local = JSON.parse(localStorage.getItem(personalKey) || 'null'); } catch (_) {}
+    if (!local) {
+      // Import the old single-device save once, into the first account that claims it.
+      try { local = JSON.parse(localStorage.getItem('spine-jee') || 'null'); } catch (_) {}
+    }
+    if (local) restoreData(local);
+    else resetToDefaults();
+  }
+  activeUserId = user.id;
+  cloudReady = true;
+  const snapshot = Object.fromEntries(KEYS.map(k => [k, S[k]]));
+  snapshot.uid = uid;
+  const { error: saveError } = await supabase.from('spine_user_data').upsert(
+    { user_id: user.id, data: snapshot, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id' }
+  );
+  if (saveError) throw saveError;
+  try { localStorage.removeItem('spine-jee'); } catch (_) {}
+  show(user);
+  render();
+}
+async function activateUser(user) {
+  if (!user) { activeUserId = null; cloudReady = false; show(null); return; }
+  if (activeUserId === user.id && cloudReady) { show(user); return; }
+  if (activationPromise && activationUserId === user.id) return activationPromise;
+  activationUserId = user.id;
+  cloudReady = false;
+  say('Loading your saved study data…', true);
+  activationPromise = (async () => {
+    try {
+      await loadCloudData(user);
+      say('');
+    } catch (e) {
+      console.error('Spine cloud load failed:', e);
+      activeUserId = null; cloudReady = false; show(null);
+      say('Could not connect to your database. Check the Supabase table, policies and Vercel settings. ' + (e.message || ''));
+    } finally {
+      activationPromise = null; activationUserId = null;
+    }
+  })();
+  return activationPromise;
+}
+function explain(e) {
+  const m = e?.message || 'Something went wrong. Please try again.';
+  if (/invalid login credentials/i.test(m)) return 'Invalid email or password.';
+  if (/email not confirmed/i.test(m)) return 'Please confirm your email using the link we sent you.';
+  if (/user already registered/i.test(m)) return 'An account with this email already exists. Try signing in.';
+  if (/password should be at least/i.test(m)) return 'Password must be at least 6 characters.';
+  return m;
+}
+
+window.SpineAuth = {
+  user: null,
+  save: async data => {
+    const { data: result, error } = await supabase.auth.updateUser({ data });
+    if (error) throw error;
+    window.SpineAuth.user = normaliseUser(result.user);
+    return window.SpineAuth.user;
+  },
+  password: async password => {
+    const { data, error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    return normaliseUser(data.user);
+  },
+  logout: async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    activeUserId = null; cloudReady = false;
+    show(null); setMode('login');
+  },
+  _queueSave: snapshot => {
+    if (!supabase || !activeUserId || !cloudReady) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(async () => {
+      const userId = activeUserId;
+      const { error } = await supabase.from('spine_user_data').upsert(
+        { user_id: userId, data: snapshot, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
+      if (error) {
+        console.error('Spine cloud save failed:', error);
+        if (document.body.classList.contains('authed')) toast('Cloud sync failed. Your changes remain on this device.');
+      }
+    }, 700);
+  }
+};
+
+const ref = new URLSearchParams(location.search).get('ref');
+if (ref) {
+  sessionStorage.setItem('spine-ref', ref.slice(0,16));
+  history.replaceState(null, '', location.pathname + location.hash);
+}
+
+$('auth-seg').addEventListener('click', e => {
+  const b = e.target.closest('[data-m]');
+  if (b) setMode(b.dataset.m);
+});
+$('auth-switch').onclick = () => setMode(mode === 'signup' ? 'login' : 'signup');
+$('auth-forgot').onclick = () => setMode('forgot');
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!supabase) return say('Authentication is not configured yet. Complete the Supabase and Vercel setup first.');
+  const name = F.name.value.trim(), email = F.email.value.trim(), password = F.password.value;
+  if (mode !== 'reset' && mode !== 'forgot' && !/^\S+@\S+\.\S+$/.test(email)) return say('Enter a valid email address.');
+  if (mode !== 'forgot' && password.length < 6) return say('Password must be at least 6 characters.');
+  if (mode === 'signup' && !name) return say('Enter your name.');
+  go.disabled = true; say('');
+  try {
+    if (mode === 'login') {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      await activateUser(data.user);
+    } else if (mode === 'signup') {
+      const metadata = { full_name: name };
+      const referral = sessionStorage.getItem('spine-ref');
+      if (referral) metadata.referred_by = referral;
+      const { data, error } = await supabase.auth.signUp({
+        email, password,
+        options: { data: metadata, emailRedirectTo: location.origin + location.pathname }
+      });
+      if (error) throw error;
+      if (data.session && data.user) await activateUser(data.user);
+      else {
+        setMode('login'); F.email.value = email;
+        say('Almost there! We sent a confirmation link to ' + email + '. Confirm your email, then sign in.', true);
+      }
+    } else if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: location.origin + location.pathname
+      });
+      if (error) throw error;
+      setMode('login'); F.email.value = email;
+      say('If an account exists for ' + email + ', a password-reset link is on its way.', true);
+    } else if (mode === 'reset') {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      await supabase.auth.signOut();
+      activeUserId = null; cloudReady = false; show(null);
+      setMode('login'); say('Password updated. You can now sign in.', true);
+    }
+    F.password.value = '';
+  } catch (err) {
+    console.error('Spine authentication error:', err);
+    say(explain(err));
+  } finally {
+    go.disabled = false;
+  }
+});
+
+try {
+  const configResponse = await fetch('/api/config', { cache: 'no-store' });
+  if (!configResponse.ok) throw new Error('Vercel could not load /api/config. Make sure the api folder is deployed and environment variables are set.');
+  const config = await configResponse.json();
+  if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY in Vercel environment variables.');
+  supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      show(null); setMode('reset'); say('Choose a new password for your account.', true);
+    } else if (event === 'SIGNED_OUT') {
+      activeUserId = null; cloudReady = false; show(null);
+    } else if (session?.user && !['INITIAL_SESSION'].includes(event)) {
+      setTimeout(() => activateUser(session.user), 0);
+    }
+  });
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (data.session?.user) await activateUser(data.session.user);
+  else show(null);
+  setMode(sessionStorage.getItem('spine-ref') ? 'signup' : 'login');
+} catch (err) {
+  console.error('Spine setup error:', err);
+  show(null);
+  setMode('login');
+  say(err.message || 'Could not initialize authentication.');
+}
 </script>
 </body>
 </html>
